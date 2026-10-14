@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不写代码，也能把 AI 用到专业级 · 5 分钟分享</title>
+
+<!--
+  黑板粉笔 deck — 给非计算机专业研究生的 5 分钟 AI 入门
+  设计系统：墨绿黑板 + 粉笔白 + 荧光石灰；终端提示符 › 为视觉母题
+  字体：Noto Serif SC（标题）/ Noto Sans SC（正文）/ JetBrains Mono（提示符、代码）
+  固定 16:9 舞台：所有内容按 1920×1080 编排，整体等比缩放
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ===========================================
+   1. CSS 变量（主题）
+   改这里就能整体换肤：黑板色、粉笔色、强调色、字号
+   =========================================== */
+:root {
+    /* 黑板 */
+    --board: #0F211C;
+    --board-2: #16302A;
+    --board-3: #0B1A16;
+
+    /* 粉笔 */
+    --chalk: #EDF4EE;
+    --chalk-dim: #9CB3A7;
+    --chalk-faint: rgba(237, 244, 238, .22);
+    --chalk-line: rgba(237, 244, 238, .30);
+
+    /* 强调：荧光石灰 + 警示橙（警示色只用于"误区/幻觉"） */
+    --lime: #CCFF3D;
+    --lime-soft: rgba(204, 255, 61, .10);
+    --alert: #FF9A6B;
+    --alert-soft: rgba(255, 154, 107, .10);
+
+    /* 字体 */
+    --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+    --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+    /* 舞台 */
+    --stage-bg: #07110E;
+    --slide-bg: #0F211C;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+
+    /* 粉笔灰颗粒 */
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+
+    /* 手绘粉笔下划线（SVG，波浪一笔） */
+    --underline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 18' preserveAspectRatio='none'%3E%3Cpath d='M3 12 C 60 4, 120 15, 180 7 S 260 12, 297 6' fill='none' stroke='%23CCFF3D' stroke-width='3.4' stroke-linecap='round' opacity='.85'/%3E%3C/svg%3E");
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   2. 固定 16:9 舞台：必选基础样式
+   （viewport-base.css 全文，勿删）
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+@media print {
+    html,
+    body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative; display: block !important; visibility: visible !important;
+        opacity: 1 !important; pointer-events: auto !important;
+        width: 1920px; height: 1080px; break-after: page; page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   3. 黑板质感
+   每张 slide：底色渐变 + 擦痕 + 粉笔灰；底部一条板槽
+   =========================================== */
+body { -webkit-font-smoothing: antialiased; }
+
+.slide {
+    background:
+        radial-gradient(ellipse 1200px 700px at 22% 16%, rgba(237, 244, 238, .05), transparent 62%),
+        radial-gradient(ellipse 900px 520px at 84% 80%, rgba(204, 255, 61, .04), transparent 60%),
+        linear-gradient(160deg, var(--board-2) 0%, var(--board) 58%, var(--board-3) 100%);
+}
+
+/* 擦不干净的粉笔痕（缓慢呼吸） */
+.slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 520px 120px at 68% 32%, rgba(237, 244, 238, .05), transparent 70%),
+        radial-gradient(ellipse 380px 90px at 28% 74%, rgba(237, 244, 238, .04), transparent 72%),
+        radial-gradient(ellipse 260px 70px at 88% 58%, rgba(237, 244, 238, .03), transparent 70%);
+    pointer-events: none;
+    animation: breathe 26s var(--ease) infinite alternate;
+}
+
+@keyframes breathe {
+    from { opacity: .75; }
+    to   { opacity: 1; }
+}
+
+/* 粉笔灰 */
+.slide::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--grain);
+    opacity: .05;
+    pointer-events: none;
+}
+
+.slide-inner {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+/* 板槽 */
+.tray {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 62px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(237, 244, 238, .20) 16%, rgba(237, 244, 238, .20) 84%, transparent);
+    opacity: 0;
+    transition: opacity .8s var(--ease) .3s;
+}
+.slide.visible .tray { opacity: 1; }
+
+/* ===========================================
+   4. 版式骨架
+   页眉固定 top:92px，正文区 top:392px / bottom:150px（=538px 内容预算）
+   =========================================== */
+.slide-head {
+    position: absolute;
+    left: 168px;
+    right: 168px;
+    top: 92px;
+}
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    letter-spacing: .1em;
+    color: var(--lime);
+}
+
+.eyebrow .prompt { font-weight: 700; font-size: 28px; }
+
+.title {
+    margin-top: 26px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 88px;
+    line-height: 1.22;
+    color: var(--chalk);
+    text-shadow: 0 0 22px rgba(237, 244, 238, .14), 0 0 58px rgba(237, 244, 238, .05);
+}
+
+/* 页眉下的粉笔虚线 */
+.chalk-rule {
+    margin-top: 24px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--chalk-faint) 0 14px, transparent 14px 24px);
+    opacity: .7;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 1s var(--ease) .45s;
+}
+.slide.visible .chalk-rule { transform: scaleX(1); }
+
+/* 正文区：纵向流式，.verdict 自动贴底 */
+.slide-body {
+    position: absolute;
+    left: 168px;
+    right: 168px;
+    top: 392px;
+    bottom: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+}
+
+.foot {
+    position: absolute;
+    right: 168px;
+    bottom: 96px;
+    font-family: var(--font-mono);
+    font-size: 21px;
+    letter-spacing: .1em;
+    color: rgba(237, 244, 238, .42);
+    opacity: 0;
+    transition: opacity .9s var(--ease) 1.1s;
+}
+.slide.visible .foot { opacity: 1; }
+
+/* ===========================================
+   5. 小组件
+   =========================================== */
+/* 粉笔框 */
+.chalk-box {
+    border: 1.6px solid var(--chalk-line);
+    border-radius: 12px 18px 14px 20px / 18px 12px 20px 14px;
+    padding: 26px 32px;
+    background: rgba(237, 244, 238, .025);
+}
+.chalk-box.bad  { border-color: rgba(255, 154, 107, .42); background: var(--alert-soft); }
+.chalk-box.good { border-color: rgba(204, 255, 61, .42);  background: var(--lime-soft); }
+
+.box-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 30px;
+    color: var(--chalk);
+}
+.box-head small {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 19px;
+    color: var(--chalk-dim);
+    letter-spacing: .04em;
+}
+
+.mark-x { color: var(--alert); font-family: var(--font-mono); font-weight: 700; }
+.mark-ok { color: var(--lime); font-family: var(--font-mono); font-weight: 700; }
+
+.chalk-box p,
+.chalk-box li {
+    margin-top: 14px;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 27px;
+    line-height: 1.6;
+    color: var(--chalk-dim);
+}
+.chalk-box li { margin-top: 10px; }
+.chalk-box ul { list-style: none; }
+.chalk-box li::before {
+    content: "—";
+    color: var(--chalk-faint);
+    margin-right: 12px;
+}
+
+/* 两栏 / 四宫格 */
+.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; min-height: 0; }
+
+/* 引导句 */
+.lead {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 33px;
+    line-height: 1.55;
+    color: var(--chalk);
+}
+.lead b { color: var(--lime); font-weight: 500; }
+
+/* 结语条：贴底、左侧石灰竖条 */
+.verdict {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 22px 0 22px 30px;
+    border-left: 4px solid var(--lime);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 1.4;
+    color: var(--lime);
+}
+.verdict.big { font-size: 42px; }
+
+/* 编号 */
+.num {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 38px;
+    color: var(--lime);
+    line-height: 1;
+}
+
+/* 小标签 / 说明 */
+.tag, .mono-sm {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 21px;
+    line-height: 1.5;
+    letter-spacing: .02em;
+    color: var(--chalk-dim);
+}
+.tag {
+    margin-top: 16px;
+    padding: 8px 16px;
+    border: 1px dashed var(--chalk-faint);
+    border-radius: 8px;
+    color: var(--lime);
+}
+
+/* 引语块 */
+.quote-block {
+    position: relative;
+    padding: 6px 0 6px 46px;
+    border-left: 3px solid var(--chalk-faint);
+}
+.quote-mark {
+    position: absolute;
+    left: 4px;
+    top: -22px;
+    font-family: var(--font-display);
+    font-size: 76px;
+    line-height: 1;
+    color: var(--chalk-faint);
+}
+.quote-block p {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 30px;
+    line-height: 1.6;
+    color: var(--chalk);
+}
+
+/* 案例块 */
+.case {
+    border: 1.6px solid rgba(255, 154, 107, .40);
+    border-radius: 12px 18px 14px 20px / 18px 12px 20px 14px;
+    background: var(--alert-soft);
+    padding: 24px 32px;
+}
+.case-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 19px;
+    letter-spacing: .14em;
+    color: var(--alert);
+    margin-bottom: 6px;
+}
+.case p {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 27px;
+    line-height: 1.6;
+    color: var(--chalk-dim);
+}
+.case p b { color: var(--chalk); font-weight: 500; }
+
+/* 代码块（粉笔字） */
+.chalk-code {
+    margin-top: 16px;
+    padding: 16px 20px;
+    border: 1px dashed var(--chalk-faint);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, .18);
+    font-family: var(--font-mono);
+    font-size: 24px;
+    line-height: 1.6;
+    color: var(--lime);
+    white-space: pre;
+}
+
+/* 分步 */
+.steps { display: flex; flex-direction: column; gap: 22px; }
+.step { display: flex; gap: 24px; align-items: flex-start; }
+.step .num { flex: 0 0 62px; }
+.step b {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 31px;
+    color: var(--chalk);
+}
+.step p {
+    margin-top: 8px;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 26px;
+    line-height: 1.55;
+    color: var(--chalk-dim);
+}
+
+/* 五段式提示词 chips */
+.chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.chips span {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    padding: 8px 16px;
+    border: 1.6px solid rgba(204, 255, 61, .45);
+    border-radius: 999px;
+    color: var(--lime);
+}
+
+/* 入口条 */
+.entry-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--chalk-faint);
+}
+.entry-strip .chip {
+    font-family: var(--font-mono);
+    font-size: 21px;
+    padding: 8px 16px;
+    border: 1px solid var(--chalk-faint);
+    border-radius: 8px;
+    color: var(--chalk-dim);
+}
+.entry-strip .chip.hl { border-color: rgba(204, 255, 61, .5); color: var(--lime); }
+
+/* 封底 */
+.finale { display: flex; flex-direction: column; gap: 6px; }
+.finale-line {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 62px;
+    line-height: 1.3;
+    color: var(--chalk);
+}
+.finale-line.lime { color: var(--lime); }
+.recap { display: flex; flex-direction: column; gap: 14px; }
+.recap div {
+    display: flex;
+    gap: 20px;
+    align-items: baseline;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 27px;
+    color: var(--chalk-dim);
+}
+.recap em { font-style: normal; color: var(--lime); font-family: var(--font-mono); font-size: 23px; }
+.res {
+    margin-top: auto;
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    padding-top: 22px;
+    border-top: 1px dashed var(--chalk-faint);
+    font-family: var(--font-mono);
+    font-size: 21px;
+    color: var(--chalk-dim);
+}
+
+/* 粉笔圈重点（手绘下划线） */
+.chalk-word { position: relative; color: var(--lime); display: inline-block; }
+.chalk-word::after {
+    content: "";
+    position: absolute;
+    left: -10px;
+    right: -10px;
+    bottom: -8px;
+    height: 18px;
+    background: var(--underline) no-repeat center / 100% 100%;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 1s var(--ease) .9s;
+}
+.slide.visible .chalk-word::after { clip-path: inset(0 0 0 0); }
+
+/* 真实照片：贴在黑板上的照片卡 */
+.photo-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    margin: 0;
+}
+.photo-frame {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    border: 6px solid rgba(237, 244, 238, .85);
+    border-radius: 3px;
+    background: #0B1A16;
+    overflow: hidden;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
+    transform: rotate(-1.2deg);
+}
+.photo-frame img {
+    /* 绝对定位：图片不再撑高容器，容器高度完全由栅格行决定 */
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+/* 截图类用 contain，保证界面不被裁掉 */
+.photo-card.contain .photo-frame img { object-fit: contain; }
+.photo-card figcaption {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--chalk-dim);
+}
+/* 纸胶带 */
+.photo-tape {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    margin-left: -62px;
+    width: 124px;
+    height: 26px;
+    z-index: 3;
+    background: rgba(237, 244, 238, .20);
+    border-left: 1px dashed rgba(237, 244, 238, .38);
+    border-right: 1px dashed rgba(237, 244, 238, .38);
+    transform: rotate(-2.5deg);
+    pointer-events: none;
+}
+
+/* 封面：真实黑板照片垫底（上覆暗角，保证粉笔字对比度） */
+.board-photo {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 1400px 900px at 62% 38%, rgba(15, 33, 28, .62), rgba(11, 26, 22, .90) 72%),
+        url("assets/chalkboard.jpg") center / cover no-repeat;
+}
+
+/* 行动清单页：真实书桌照片垫底（上覆深色蒙版） */
+.photo-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(15, 33, 28, .84) 0%, rgba(15, 33, 28, .92) 55%, rgba(11, 26, 22, .96) 100%),
+        url("assets/desk-notebook.jpg") center / cover no-repeat;
+}
+
+/* 图片来源署名 */
+.credits {
+    position: absolute;
+    left: 168px;
+    bottom: 96px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: .02em;
+    color: rgba(237, 244, 238, .34);
+    opacity: 0;
+    transition: opacity .9s var(--ease) 1.3s;
+}
+.slide.visible .credits { opacity: 1; }
+
+/* 封面 */
+.cover .cover-body {
+    position: absolute;
+    left: 168px;
+    top: 246px;
+    width: 1360px;
+}
+.cover .cover-title {
+    margin-top: 46px;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 130px;
+    line-height: 1.18;
+    color: var(--chalk);
+    text-shadow: 0 0 22px rgba(237, 244, 238, .16), 0 0 58px rgba(237, 244, 238, .06);
+}
+.cover .cover-sub {
+    margin-top: 54px;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 33px;
+    line-height: 1.66;
+    color: var(--chalk-dim);
+    max-width: 1120px;
+}
+.prompt-line {
+    position: absolute;
+    left: 168px;
+    bottom: 132px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    color: var(--lime);
+}
+.caret {
+    display: inline-block;
+    width: 13px;
+    height: 30px;
+    background: var(--lime);
+    animation: blink 1.1s steps(1, end) infinite;
+}
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.cover .foot { right: 168px; }
+
+/* ===========================================
+   6. 入场动画：粉笔逐步写上去
+   每个 .reveal 用行内 --d 控制错开时间
+   =========================================== */
+.reveal {
+    opacity: 0;
+    filter: blur(9px);
+    transform: translateY(18px);
+    transition:
+        opacity .85s var(--ease) var(--d, 0s),
+        filter .85s var(--ease) var(--d, 0s),
+        transform .85s var(--ease) var(--d, 0s);
+}
+.slide.visible .reveal { opacity: 1; filter: blur(0); transform: translateY(0); }
+
+/* ===========================================
+   7. 播放控件（在舞台之外，不影响幻灯片版面）
+   =========================================== */
+.deck-progress {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(237, 244, 238, .08);
+    z-index: 1000;
+}
+.deck-progress i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--lime);
+    transition: width .45s var(--ease);
+}
+.deck-hint {
+    position: fixed;
+    right: 22px;
+    bottom: 18px;
+    z-index: 1000;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    letter-spacing: .08em;
+    color: rgba(237, 244, 238, .45);
+    transition: opacity .8s var(--ease);
+}
+.deck-hint.fade { opacity: 0; }
+
+/* 行内编辑态 */
+.edit-hotzone {
+    position: fixed; top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 10000;
+    cursor: pointer;
+}
+.edit-toggle {
+    position: fixed; top: 16px; left: 16px;
+    z-index: 10001;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(204, 255, 61, .5);
+    background: rgba(15, 33, 28, .92);
+    color: var(--lime);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+}
+.edit-toggle.show,
+.edit-toggle.active { opacity: 1; pointer-events: auto; }
+body.editing [contenteditable="true"] {
+    outline: 1px dashed rgba(204, 255, 61, .55);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+.edit-toast {
+    position: fixed; bottom: 26px; left: 50%;
+    transform: translateX(-50%) translateY(14px);
+    z-index: 10002;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    background: rgba(15, 33, 28, .95);
+    border: 1px solid rgba(204, 255, 61, .45);
+    color: var(--lime);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease, transform .3s ease;
+}
+.edit-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============================================================
+     01 · 封面
+     讲稿：今天 5 分钟，只讲一件事——不会写代码的人，怎么把 AI 用到专业级。
+     我会给你们两个判断标准、五个心法，还有一个能真正替你动手的工具。
+     ============================================================ -->
+<section class="slide cover active visible">
+    <div class="slide-inner">
+        <!-- 真实黑板照片垫底 -->
+        <div class="board-photo"></div>
+        <div class="tray"></div>
+        <div class="cover-body">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 东华大学 · 5 分钟分享</div>
+            <h1 class="cover-title reveal" style="--d:.26s">不写代码<br>也能把 AI 用到<span class="chalk-word">专业级</span></h1>
+            <p class="cover-sub reveal" style="--d:.5s">给非计算机专业研究生的 AI 入门：<br>两个判断标准 · 五个心法 · 一个能真正动手的工具</p>
+        </div>
+        <div class="prompt-line reveal" style="--d:1.1s">
+            <span>你今天想让 AI 帮你做什么？</span>
+            <span class="caret"></span>
+        </div>
+        <div class="foot">2026.10.14</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     02 · 破除误区
+     讲稿：先说一个最常见的误会。很多人说"我会用 AI"，其实是问一句、复制粘贴。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 先破除一个误区</div>
+            <h2 class="title reveal" style="--d:.22s">「会用 AI」不是问一句就复制</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2">
+                <div class="chalk-box bad reveal" style="--d:.45s">
+                    <div class="box-head"><span class="mark-x">✕</span> 问一句就走</div>
+                    <p>打开豆包、Kimi，提一个问题，把答案复制粘贴走人。</p>
+                </div>
+                <div class="chalk-box bad reveal" style="--d:.58s">
+                    <div class="box-head"><span class="mark-x">✕</span> 只做表面活</div>
+                    <p>让 AI 改改评论、校校错字，就觉得自己"会用 AI"了。</p>
+                </div>
+            </div>
+            <div class="verdict reveal" style="--d:.78s">这只是把搜索引擎换了个壳 —— AI 的能力，一点都没用到。</div>
+        </div>
+        <div class="foot">02 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     03 · 判断标准（全场最重要的一页）
+     讲稿：真正判断你会不会用 AI 的，是老板/导师的这两个问题。一个问你的基本功，一个问你的拆解力。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 判断标准 · 来自老板的两个问题</div>
+            <h2 class="title reveal" style="--d:.22s">他凭什么判断你"会不会用 AI"</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="quote-block reveal" style="--d:.42s">
+                <span class="quote-mark">"</span>
+                <p>我那天跟我老板做一个深入对话，我说你怎么判断一个人用 AI 用得怎么样 —— 他就看两个。</p>
+            </div>
+            <div class="cols-2" style="margin-top:6px">
+                <div class="reveal" style="--d:.6s">
+                    <div class="num">01</div>
+                    <p class="lead" style="margin-top:16px">没有 AI，让你手写一个报告或作品，你能做成什么样？</p>
+                    <div class="tag">考察：基本功 · 专业思维 · 脱开工具的上限</div>
+                </div>
+                <div class="reveal" style="--d:.74s">
+                    <div class="num">02</div>
+                    <p class="lead" style="margin-top:16px">给你限定一个 AI、限定 token，你又能交出什么作品？</p>
+                    <div class="tag">考察：拆解问题的逻辑 · 有限 token 下的产出质量</div>
+                </div>
+            </div>
+            <div class="foot" style="position:static;margin-top:auto;text-align:left">出处：杨洋学长 10.13 分享 · 快消（亿滋）</div>
+        </div>
+        <div class="foot">03 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     04 · 心法一
+     讲稿：第一个心法，差距不在模型，在你提问和拆解问题的逻辑。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 心法 ①</div>
+            <h2 class="title reveal" style="--d:.22s">差距不在模型，在你的提问</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <p class="lead reveal" style="--d:.42s">你用的是 DeepSeek 还是 ChatGPT，远不如<b>你怎么拆解问题</b>重要。</p>
+            <div class="cols-2">
+                <div class="chalk-box bad reveal" style="--d:.58s">
+                    <div class="box-head"><span class="mark-x">✕</span> 模糊提问</div>
+                    <p style="font-family:var(--font-mono);font-size:24px;color:var(--chalk)">「帮我写个关于台风期货的报告」</p>
+                    <p>→ 得到一个泛泛的模板，还得自己重写。</p>
+                </div>
+                <div class="chalk-box good reveal" style="--d:.7s">
+                    <div class="box-head"><span class="mark-ok">✓</span> 结构化提问</div>
+                    <div class="chips">
+                        <span>角色</span><span>任务</span><span>材料</span><span>格式</span><span>约束</span>
+                    </div>
+                    <p>→ 直接得到能用的初稿。</p>
+                </div>
+            </div>
+        </div>
+        <div class="foot">04 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     05 · 心法二
+     讲稿：第二个心法，也是最要命的一条：AI 会把假话说到像真的，必须验证。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 心法 ②</div>
+            <h2 class="title reveal" style="--d:.22s">AI 会把假话说到像真的</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2">
+                <div class="chalk-box reveal" style="--d:.42s">
+                    <div class="box-head">讨好性</div>
+                    <p>你一指出错误，它立刻道歉改口，顺着你说 —— 让你误以为它是对的。</p>
+                </div>
+                <div class="chalk-box reveal" style="--d:.54s">
+                    <div class="box-head">幻觉</div>
+                    <p>它会"煞有介事"地编造事实、数据和文献出处。</p>
+                </div>
+            </div>
+            <div class="case reveal" style="--d:.68s">
+                <div class="case-tag">真实案例</div>
+                <p>学长写毕业论文时让 AI 找文献依据，AI 的结论是 —— <b>「中国证券市场是完全有效的市场」</b>。连美国市场都达不到"完全有效"；这句话抄进论文，导师直接判不合格。</p>
+            </div>
+            <div class="verdict reveal" style="--d:.84s">关键决策、论文数据、文献引用 —— 必须人工复核。</div>
+        </div>
+        <div class="foot">05 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     06 · 心法三
+     讲稿：第三个心法很实用：怎么把材料喂给 AI。用纯文本、用 Markdown 标层级，最快最准也最省。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 心法 ③</div>
+            <h2 class="title reveal" style="--d:.22s">喂对格式，又快又准</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2">
+                <div class="chalk-box bad reveal" style="--d:.42s">
+                    <div class="box-head"><span class="mark-x">✕</span> 直接丢一份排好版的 PDF</div>
+                    <p>首行缩进、字号、加粗 —— 这些是给人看的，AI 不需要。</p>
+                    <p class="mono-sm">Token 消耗高，层级还识别不准</p>
+                </div>
+                <div class="chalk-box good reveal" style="--d:.54s">
+                    <div class="box-head"><span class="mark-ok">✓</span> 纯文本 .md / .txt</div>
+                    <div class="chalk-code"># 一级标题
+## 二级标题
+- 要点</div>
+                    <p class="mono-sm">最省 Token，层级识别最准</p>
+                </div>
+            </div>
+            <div class="verdict reveal" style="--d:.72s">大模型本质上就是在处理文本 —— 给它"逻辑"，别给它"排版"。</div>
+        </div>
+        <div class="foot">06 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     07 · 心法四
+     讲稿：第四个心法，给 AI 建一个了解"你"的专属数据库。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 心法 ④</div>
+            <h2 class="title reveal" style="--d:.22s">让 AI 先了解「你」</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2">
+                <div class="reveal" style="--d:.42s">
+                    <p class="lead">现在的大模型知道的是<b>全网公开信息</b>。</p>
+                    <p style="margin-top:20px;font-family:var(--font-body);font-weight:300;font-size:26px;line-height:1.6;color:var(--chalk-dim)">但每个人关注的世界、产生的灵感，都是独特的。想让 AI 真的帮上你，得先有属于你的数据库。</p>
+                </div>
+                <div class="steps reveal" style="--d:.58s">
+                    <div class="step">
+                        <span class="num">01</span>
+                        <div><b>记</b><p>用笔记软件写下日记、思考、灵感、小碎念</p></div>
+                    </div>
+                    <div class="step">
+                        <span class="num">02</span>
+                        <div><b>连</b><p>把笔记之间建立 Link，慢慢长成一张网</p></div>
+                    </div>
+                    <div class="step">
+                        <span class="num">03</span>
+                        <div><b>用</b><p>让 AI 读你的库，而不是检索全网</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="verdict reveal" style="--d:.76s">这样养出来的 AI，会比你自己更了解你。</div>
+        </div>
+        <div class="foot">07 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     08 · 换挡：Claude Code 是什么
+     讲稿：前面四个心法都是"怎么用"。现在换挡——从"会聊"到"会干"。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 换挡 · Claude Code 是什么</div>
+            <h2 class="title reveal" style="--d:.22s">从「会聊」到「会干」</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2">
+                <div class="chalk-box reveal" style="--d:.42s">
+                    <div class="box-head">聊天式 AI <small>豆包 / Kimi / 网页版</small></div>
+                    <ul>
+                        <li>只在对话框里给你文字</li>
+                        <li>复制、粘贴、动手，全是你自己干</li>
+                        <li>交付的是「建议」</li>
+                    </ul>
+                </div>
+                <div class="chalk-box good reveal" style="--d:.56s">
+                    <div class="box-head">Claude Code <small>Anthropic 出品</small></div>
+                    <ul>
+                        <li>能直接读你电脑里的文件</li>
+                        <li>能改文件、整理目录、批量处理表格</li>
+                        <li>交付的是「做完的东西」</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="verdict big reveal" style="--d:.76s">它不是编程工具 —— 它是一双能替你动手的手。</div>
+        </div>
+        <div class="foot">08 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     09 · Claude Code 能干什么
+     讲稿：四个特别适合研究生的用法，最后一个是你们现在看的这份 slides。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> Claude Code 能干什么</div>
+            <h2 class="title reveal" style="--d:.22s">不写代码，也能让它干活</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="cols-2" style="align-items:stretch">
+                <!-- 左：四个非编程用法 -->
+                <div style="display:flex;flex-direction:column;gap:18px;min-height:0">
+                    <div class="steps" style="gap:14px">
+                        <div class="step reveal" style="--d:.4s">
+                            <span class="num">01</span>
+                            <div><b>整理资料</b><p>把几十个乱名文件按主题归类、批量重命名。</p></div>
+                        </div>
+                        <div class="step reveal" style="--d:.5s">
+                            <span class="num">02</span>
+                            <div><b>处理表格</b><p>合并、清洗多个 Excel / CSV，出汇总表。</p></div>
+                        </div>
+                        <div class="step reveal" style="--d:.6s">
+                            <span class="num">03</span>
+                            <div><b>读文献</b><p>一次读十几篇 PDF，输出对比表和综述初稿。</p></div>
+                        </div>
+                        <div class="step reveal" style="--d:.7s">
+                            <span class="num">04</span>
+                            <div><b>做成品</b><p>比如你正在看的这份 slides，就是它做的。</p></div>
+                        </div>
+                    </div>
+                    <div class="entry-strip reveal" style="--d:.86s;margin-top:auto;padding-top:16px">
+                        <span class="mono-sm">四个入口：</span>
+                        <span class="chip hl">桌面 App · 最省事</span>
+                        <span class="chip">网页版</span>
+                        <span class="chip">终端 CLI</span>
+                        <span class="chip">VS Code</span>
+                    </div>
+                </div>
+                <!-- 右：真实界面截图 -->
+                <figure class="photo-card contain reveal" style="--d:.78s">
+                    <span class="photo-tape"></span>
+                    <div class="photo-frame"><img src="assets/claude-code-demo.png" alt="Claude Code 在终端里读取文件、执行命令、给出结果的真实界面"></div>
+                    <figcaption>真实界面：它自己在读文件、跑命令 —— 你只管说要什么。</figcaption>
+                </figure>
+            </div>
+        </div>
+        <div class="foot">09 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     10 · 心法五
+     讲稿：第五个心法，拿到好工具别只用原样，按自己的需求改一刀。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 心法 ⑤</div>
+            <h2 class="title reveal" style="--d:.22s">站在巨人肩膀上，再改一刀</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="case reveal" style="--d:.42s">
+                <div class="case-tag">案例 · Zara 张</div>
+                <p>文科生背景、完全不懂底层代码，用 AI 做了一个 Chrome 插件：查论文时几十个标签页挤在一起 —— <b>它能按网站归类，一键关掉所有知网页</b>。</p>
+            </div>
+            <div class="cols-2">
+                <div class="chalk-box reveal" style="--d:.58s">
+                    <div class="box-head">学长怎么用</div>
+                    <p>直接用她的插件底层逻辑，再按自己的审美和使用习惯，重新定制了界面和设置。</p>
+                </div>
+                <div class="chalk-box good reveal" style="--d:.7s">
+                    <div class="box-head">从「拿来即用」到「二次开发」</div>
+                    <p>过去是下载了就照着用；现在是按我的需求，改一改。</p>
+                </div>
+            </div>
+        </div>
+        <div class="foot">10 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     11 · 行动清单
+     讲稿：别听了就忘，这周就做这三件事。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <!-- 真实书桌照片垫底 -->
+        <div class="photo-bg"></div>
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 行动清单</div>
+            <h2 class="title reveal" style="--d:.22s">这周就能做的三件事</h2>
+            <div class="chalk-rule"></div>
+        </header>
+        <div class="slide-body">
+            <div class="steps" style="gap:16px">
+                <div class="step reveal" style="--d:.4s">
+                    <span class="num">01</span>
+                    <div><b>建一个库</b><p>今天之后看到的每一篇好文，都丢进同一个笔记里 —— 先攒够 10 条。</p></div>
+                </div>
+                <div class="step reveal" style="--d:.54s">
+                    <span class="num">02</span>
+                    <div><b>做完整的一件事</b><p>挑一件你每周都要做的重复活儿，让 AI 从头做到尾，而不是问一句。</p></div>
+                </div>
+                <div class="step reveal" style="--d:.68s">
+                    <span class="num">03</span>
+                    <div><b>装一次 Claude Code</b><p>让它帮你整理一个文件夹，体会「AI 说话」和「AI 动手」的区别。</p>
+                    <div class="chalk-code" style="font-size:19px;margin-top:8px;padding:12px 16px">macOS / Linux:  curl -fsSL https://claude.ai/install.sh | bash
+Windows (PowerShell):  irm https://claude.ai/install.ps1 | iex</div>
+                    </div>
+                </div>
+            </div>
+            <div class="verdict reveal" style="--d:.86s">别问「AI 能做什么」，问「我这周哪件事最烦」。</div>
+        </div>
+        <div class="foot">11 / 12</div>
+    </div>
+</section>
+
+<!-- ============================================================
+     12 · 收尾
+     讲稿：一句话收尾——你不需要会写代码，你需要会提问、会验证、会动手。
+     ============================================================ -->
+<section class="slide">
+    <div class="slide-inner">
+        <div class="tray"></div>
+        <header class="slide-head">
+            <div class="eyebrow reveal" style="--d:.1s"><span class="prompt">›</span> 一句话收尾</div>
+        </header>
+        <div class="slide-body" style="top:300px">
+            <div class="finale">
+                <p class="finale-line reveal" style="--d:.24s">你不需要会写代码。</p>
+                <p class="finale-line lime reveal" style="--d:.4s">你需要会提问、会验证、会动手。</p>
+            </div>
+            <div class="recap reveal" style="--d:.6s">
+                <div><span class="num" style="font-size:26px">01</span> 没有 AI，你能手写出什么？<em>那是你的基本功</em></div>
+                <div><span class="num" style="font-size:26px">02</span> 限定 AI 和 token，你能交出什么？<em>那是你的拆解力</em></div>
+                <div><span class="num" style="font-size:26px">03</span> 会不会验证、会不会动手？<em>那才是差距</em></div>
+            </div>
+            <div class="res reveal" style="--d:.78s">
+                <span>Claude Code · Anthropic 出品 · code.claude.com</span>
+                <span>免费课程 · Claude Academy「Claude Code 101」</span>
+                <span>有问题随时找我</span>
+            </div>
+        </div>
+        <div class="credits">图片：黑板 / 书桌 · Wikimedia Commons（CC0）｜Claude Code 界面 · Anthropic 官方演示</div>
+        <div class="foot">12 / 12</div>
+    </div>
+</section>
+
+</main>
+</div>
+
+<!-- 播放控件：位于舞台之外，不会出现在 1920×1080 画面里 -->
+<div class="deck-controls">
+    <div class="deck-progress"><i id="deckProgress"></i></div>
+    <div class="deck-hint" id="deckHint">← → · 空格 翻页 · E 编辑</div>
+</div>
+
+<!-- 行内编辑：左上角热区悬停或按 E 进入 -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="编辑模式（E）">✎ 编辑模式</button>
+<div class="edit-toast" id="editToast"></div>
+
+<script>
+/* ===========================================
+   A. 舞台缩放
+   1920×1080 整体等比缩放；只做平移+缩放，绝不重排版式
+   =========================================== */
+class StageScaler {
+    constructor(stage) {
+        this.stage = stage;
+        this.fit = this.fit.bind(this);
+        this.fit();
+        window.addEventListener('resize', this.fit);
+    }
+    fit() {
+        const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+        const x = (window.innerWidth - 1920 * factor) / 2;
+        const y = (window.innerHeight - 1080 * factor) / 2;
+        this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+    }
+}
+
+/* ===========================================
+   B. 幻灯片控制器
+   支持：方向键 / 空格 / PageUp·Down / Home·End / 滚轮 / 触摸滑动
+   =========================================== */
+class SlidePresentation {
+    constructor(stage) {
+        this.stage = stage;
+        this.slides = Array.from(document.querySelectorAll('.slide'));
+        this.current = 0;
+        this.progress = document.getElementById('deckProgress');
+        this.hint = document.getElementById('deckHint');
+        this.locked = false;
+
+        new StageScaler(stage);
+        this.bindKeys();
+        this.bindWheel();
+        this.bindTouch();
+        this.bindControls();
+        this.show(0);
+    }
+
+    show(index) {
+        this.current = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            const on = i === this.current;
+            slide.classList.toggle('active', on);
+            slide.classList.toggle('visible', on);
+        });
+        if (this.progress) {
+            this.progress.style.width = ((this.current + 1) / this.slides.length * 100) + '%';
+        }
+    }
+
+    next() { this.show(this.current + 1); }
+    prev() { this.show(this.current - 1); }
+
+    /* 防止一次滑动/滚轮连翻多页 */
+    throttle() {
+        if (this.locked) return false;
+        this.locked = true;
+        setTimeout(() => { this.locked = false; }, 520);
+        return true;
+    }
+
+    go(delta) { if (this.throttle()) delta > 0 ? this.next() : this.prev(); }
+
+    bindKeys() {
+        document.addEventListener('keydown', (e) => {
+            /* 编辑态下不翻页（除了 Esc / 方向键在可编辑元素中） */
+            if (e.target.isContentEditable && !['Escape'].includes(e.key)) return;
+            switch (e.key) {
+                case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
+                    e.preventDefault(); this.go(1); break;
+                case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+                    e.preventDefault(); this.go(-1); break;
+                case 'Home': e.preventDefault(); this.show(0); break;
+                case 'End': e.preventDefault(); this.show(this.slides.length - 1); break;
+            }
+        });
+    }
+
+    bindWheel() {
+        window.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) < 12) return;
+            this.go(e.deltaY > 0 ? 1 : -1);
+        }, { passive: true });
+    }
+
+    bindTouch() {
+        let x0 = null, y0 = null;
+        window.addEventListener('touchstart', (e) => {
+            x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+        }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            const dy = e.changedTouches[0].clientY - y0;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) > 45) {
+                this.go((Math.abs(dx) > Math.abs(dy) ? dx : dy) < 0 ? 1 : -1);
+            }
+            x0 = y0 = null;
+        }, { passive: true });
+    }
+
+    /* 首次操作后淡出提示 */
+    bindControls() {
+        const fade = () => { if (this.hint) this.hint.classList.add('fade'); };
+        ['keydown', 'wheel', 'touchstart', 'click'].forEach(ev =>
+            window.addEventListener(ev, fade, { once: true, passive: true })
+        );
+    }
+}
+
+/* ===========================================
+   C. 行内编辑
+   悬停左上角热区 / 按 E 进入；点击任意文字直接改；Ctrl+S 保存
+   改动自动存入 localStorage，刷新后仍在；可导出带改动的 HTML
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.KEY = 'frontend-slides-ai-grad-5min';
+        this.EDITABLE = '.slide-inner h1, .slide-inner h2, .slide-inner p, .slide-inner li, ' +
+                        '.slide-inner .box-head, .slide-inner .tag, .slide-inner .num, ' +
+                        '.slide-inner .verdict, .slide-inner .case-tag, .slide-inner .chalk-code, ' +
+                        '.slide-inner .recap div, .slide-inner .res span, .slide-inner .step b, ' +
+                        '.slide-inner .eyebrow, .slide-inner .chips span, .slide-inner .entry-strip .chip, ' +
+                        '.slide-inner .lead, .slide-inner .mono-sm, .slide-inner .finale-line, ' +
+                        '.slide-inner figcaption, .slide-inner .credits';
+        this.isActive = false;
+        this.toggleBtn = document.getElementById('editToggle');
+        this.hotzone = document.getElementById('editHotzone');
+        this.toast = document.getElementById('editToast');
+        this.bind();
+        this.restore();
+    }
+
+    toastMsg(msg) {
+        if (!this.toast) return;
+        this.toast.textContent = msg;
+        this.toast.classList.add('show');
+        clearTimeout(this._t);
+        this._t = setTimeout(() => this.toast.classList.remove('show'), 1600);
+    }
+
+    toggleEditMode(force) {
+        this.isActive = force === undefined ? !this.isActive : force;
+        document.body.classList.toggle('editing', this.isActive);
+        this.toggleBtn.classList.toggle('active', this.isActive);
+        document.querySelectorAll(this.EDITABLE).forEach(el => {
+            if (this.isActive) {
+                el.setAttribute('contenteditable', 'true');
+                el.setAttribute('spellcheck', 'false');
+            } else {
+                el.removeAttribute('contenteditable');
+            }
+        });
+        this.toggleBtn.textContent = this.isActive ? '✓ 完成编辑（Ctrl+S 保存）' : '✎ 编辑模式';
+        this.toastMsg(this.isActive ? '点任意文字即可修改 · Ctrl+S 保存' : '已退出编辑模式');
+    }
+
+    /* 按文档顺序抓取所有可编辑文本 */
+    snapshot() {
+        return Array.from(document.querySelectorAll(this.EDITABLE)).map(el => el.innerHTML);
+    }
+
+    save(silent) {
+        try {
+            localStorage.setItem(this.KEY, JSON.stringify(this.snapshot()));
+            if (!silent) this.toastMsg('已保存到本机浏览器');
+        } catch (e) { /* 隐私模式下可能失败，忽略 */ }
+    }
+
+    restore() {
+        let saved;
+        try { saved = JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) { return; }
+        if (!Array.isArray(saved)) return;
+        const els = document.querySelectorAll(this.EDITABLE);
+        if (saved.length !== els.length) return;
+        els.forEach((el, i) => { el.innerHTML = saved[i]; });
+    }
+
+    /* 导出：把当前改动写回一份新的 HTML 文件 */
+    exportFile() {
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+        clone.querySelectorAll('.editing').forEach(el => el.classList.remove('editing'));
+        clone.querySelectorAll('.show').forEach(el => el.classList.remove('show'));
+        const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'AI入门-非计算机专业研究生-5分钟.html';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        this.toastMsg('已导出带改动的新 HTML');
+    }
+
+    bind() {
+        /* 1. 按钮点击 */
+        this.toggleBtn.addEventListener('click', () => this.toggleEditMode());
+
+        /* 2. 左上角热区悬停（JS 延时，不用 CSS ~ 选择器） */
+        let hideTimer = null;
+        const show = () => { clearTimeout(hideTimer); this.toggleBtn.classList.add('show'); };
+        const hide = () => {
+            hideTimer = setTimeout(() => {
+                if (!this.isActive) this.toggleBtn.classList.remove('show');
+            }, 400);
+        };
+        this.hotzone.addEventListener('mouseenter', show);
+        this.hotzone.addEventListener('mouseleave', hide);
+        this.toggleBtn.addEventListener('mouseenter', show);
+        this.toggleBtn.addEventListener('mouseleave', hide);
+        this.hotzone.addEventListener('click', () => this.toggleEditMode());
+
+        /* 3. E 键切换；Ctrl/Cmd+S 保存；编辑态下 Ctrl/Cmd+E 导出 */
+        document.addEventListener('keydown', (e) => {
+            const mod = e.metaKey || e.ctrlKey;
+            if (mod && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                this.save();
+                return;
+            }
+            if (mod && e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                this.exportFile();
+                return;
+            }
+            if (e.key.toLowerCase() === 'e' && !mod && !e.target.isContentEditable) {
+                e.preventDefault();
+                this.toggleEditMode();
+            }
+            if (e.key === 'Escape' && this.isActive) this.toggleEditMode(false);
+        });
+
+        /* 4. 编辑时自动保存（防抖） */
+        let saveTimer = null;
+        document.addEventListener('input', (e) => {
+            if (!this.isActive || !e.target.isContentEditable) return;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => this.save(true), 700);
+        });
+    }
+}
+
+/* ===========================================
+   D. 启动
+   =========================================== */
+const deck = new SlidePresentation(document.getElementById('deckStage'));
+window.deck = deck;
+window.editor = new InlineEditor();
+</script>
+</body>
+</html>
